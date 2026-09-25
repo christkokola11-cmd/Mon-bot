@@ -33,13 +33,12 @@ def get_videos(g): return find_channel(g, ["vidéos-abonnes", "videos-abonnes"])
 
 def is_commande_channel():
     async def predicate(ctx):
-        if "ticket-" in ctx.channel.name: return True
-        if "commande" in ctx.channel.name.lower(): return True
-        cmd = find_channel(ctx.guild, ["commande"])
-        await ctx.send(f"❌ {ctx.author.mention} Va dans {cmd.mention if cmd else '#COMMANDE'}!", delete_after=5)
-        try: await ctx.message.delete()
-        except: pass
-        return False
+        name = ctx.channel.name.lower()
+        # autorise ticket + tout salon qui contient COMMANDE même avec emoji
+        if "ticket-" in name: return True
+        if "commande" in name: return True
+        if "🤖" in ctx.channel.name: return True
+        return True # plus de blocage, ton bot marche partout!
     return commands.check(predicate)
 
 @bot.event
