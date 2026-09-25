@@ -1,46 +1,57 @@
+
 import discord
 import os
 import aiohttp
-import xml.etree.ElementTree as ET
+import re
 from discord.ext import commands, tasks
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-YOUTUBE_CHANNEL_ID = "UCxxxxxxxxxxxxxxxx"
-SALON_ID = 123456789012345678
+# CONFIG
+TIKTOK_USERNAME = "furiosbsofficiel"
+YOUTUBE_CHANNEL_ID = "UCXXXXXXXXXXXXXXXX" # On mettra le bon après
+DISCORD_CHANNEL_ID = 123456789012345678  # <- METS TON ID SALON ICI
 
-last_video_id = None
+last_tiktok_id = None
+last_youtube_id = None
 
 @bot.event
 async def on_ready():
     print(f"Connecte: {bot.user}")
+    check_tiktok.start()
     check_youtube.start()
 
-@tasks.loop(minutes=3)
-async def check_youtube():
-    global last_video_id
+@tasks.loop(minutes=5)
+async def check_tiktok():
+    global last_tiktok_id
     try:
-        url = f"https://www.youtube.com/feeds/videos.xml?channel_id={YOUTUBE_CHANNEL_ID}"
+        url = f"https://www.tiktok.com/@{TIKTOK_USERNAME}"
+        headers = {"User-Agent": "Mozilla/5.0"}
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                data = await resp.text()
-                root = ET.fromstring(data)
-                entry = root.find("{http://www.w3.org/2005/Atom}entry")
-                if not entry: return
-                video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-                title = entry.find("{http://www.w3.org/2005/Atom}title").text
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-                if last_video_id is None:
-                    last_video_id = video_id
+            async with session.get(url, headers=headers) as resp:
+                html = await resp.text()
+                # Cherche le dernier video ID
+                match = re.search(r'"id":"(\d+)"', html)
+                if not match:
                     return
-                if video_id != last_video_id:
-                    last_video_id = video_id
-                    salon = bot.get_channel(SALON_ID)
-                    if salon:
-                        await salon.send(f"@everyone 🚀 **FuriosBS vient de sortir une nouvelle vidéo !**\n{video_url}\n**{title}** 🔥")
+                video_id = match.group(1)
+                if last_tiktok_id is None:
+                    last_tiktok_id = video_id
+                    return
+                if video_id != last_tiktok_id:
+                    last_tiktok_id = video_id
+                    channel = bot.get_channel(DISCORD_CHANNEL_ID)
+                    if channel:
+                        await channel.send(f"🔥 Nouveau TikTok de FuriosBS !\nhttps://www.tiktok.com/@{TIKTOK_USERNAME}/video/{video_id} @everyone")
     except Exception as e:
-        print(e)
+        print(f"TikTok error: {e}")
+
+@tasks.loop(minutes=5)
+async def check_youtube():
+    global last_youtube_id
+    # (garde le check youtube si tu veux les 2)
+    pass
 
 bot.run(os.getenv("TOKEN"))
