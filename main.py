@@ -58,4 +58,4 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
     keep_alive()
-bot.run(os.getenv("TOKEN")
+bot.run(os.getenv("TOKEN"))
