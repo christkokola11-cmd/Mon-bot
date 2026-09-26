@@ -26,6 +26,46 @@ def ax(u,a):
  d["lv"]=l
  xp[str(u)]=d
  return l
+ async def make_level_card(avatar_url, level):
+    W, H = 900, 350
+    bg = Image.new("RGB", (W, H), (10, 20, 55))
+    draw = ImageDraw.Draw(bg, "RGBA")
+    for y in range(H):
+        alpha = y / H
+        r = int(10 + alpha*30); g = int(20 + alpha*50); b = int(80 + alpha*90)
+        draw.line([(0,y),(W,y)], fill=(r,g,b))
+    for _ in range(30):
+        x,y = random.randint(0,W), random.randint(0,H)
+        s = random.randint(1,3)
+        draw.ellipse((x,y,x+s,y+s), fill=(100,160,255, random.randint(30,120)))
+    card = Image.new("RGBA", (W,H), (0,0,0,0))
+    c_draw = ImageDraw.Draw(card)
+    c_draw.rounded_rectangle([(0,0),(W,H)], radius=35, fill=(8,18,50,230), outline=(60,110,255,180), width=2)
+    bg = Image.alpha_composite(bg.convert("RGBA"), card)
+    draw = ImageDraw.Draw(bg)
+    async with aiohttp.ClientSession() as s:
+        async with s.get(str(avatar_url)) as r:
+            av_data = await r.read()
+    av = Image.open(io.BytesIO(av_data)).convert("RGBA").resize((180,180))
+    mask = Image.new("L", (180,180), 0)
+    ImageDraw.Draw(mask).ellipse((0,0,180,180), fill=255)
+    av_bg = Image.new("RGBA", (194,194), (255,255,255,255))
+    av_bg_mask = Image.new("L", (194,194), 0)
+    ImageDraw.Draw(av_bg_mask).ellipse((0,0,194,194), fill=255)
+    bg.paste(av_bg, (58, 78), av_bg_mask)
+    bg.paste(av, (65, 85), mask)
+    f_big = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75)
+    f_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
+    f_bot = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+    draw.text((290, 85), "Félicitations !", fill="white", font=f_big)
+    draw.text((290, 165), f"vous avez atteint le niveau {level}", fill=(220,230,255), font=f_small)
+    draw.rounded_rectangle([(290,230),(330,270)], radius=8, fill=(63,85,212))
+    draw.text((298, 234), "F", fill="white", font=f_bot)
+    draw.text((340, 236), "Furios Bot", fill=(124,158,255), font=f_bot)
+    out = io.BytesIO()
+    bg.save(out, format="PNG")
+    out.seek(0)
+    return out                                                      
 @bot.event
 async def on_ready():
  print("ONLINE")
