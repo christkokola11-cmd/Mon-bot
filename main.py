@@ -81,7 +81,7 @@ async def on_message(m):
     return
   old=gx(m.author.id)["lv"]
   new=ax(m.author.id, random.randint(15,25))
-    if new>old and new>=1:
+  if new>old and new>=1:
     try:
       lvl_channel = bot.get_channel(LEVEL_CHANNEL_ID)
       if lvl_channel is None:
@@ -93,8 +93,6 @@ async def on_message(m):
       )
     except Exception as e:
       print(f"Erreur level up: {e}")
-    except Exception as e:
-      print(e)
       e1=discord.Embed(description=f"{m.author.mention} niveau {new} !", color=0x2b2d31)
       await m.channel.send(embed=e1)
   await bot.process_commands(m)
