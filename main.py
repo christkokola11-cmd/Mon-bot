@@ -77,24 +77,30 @@ async def on_ready():
  cb.start()
 @bot.event
 async def on_message(m):
-  if m.author.bot:
+  if m.author.bot: return
+  if m.content.startswith("!"):
+    await bot.process_commands(m)
     return
   old=gx(m.author.id)["lv"]
   new=ax(m.author.id, random.randint(15,25))
   if new>old and new>=1:
     try:
-      lvl_channel = bot.get_channel(LEVEL_CHANNEL_ID)
+      # cherche le salon LEVEL-XP automatiquement
+      lvl_channel = None
+      for c in m.guild.text_channels:
+        if "LEVEL-XP" in c.name.upper():
+          lvl_channel = c
+          break
       if lvl_channel is None:
         lvl_channel = m.channel
-      card_file = await make_level_card(m.author.display_avatar.url, new)
-      await lvl_channel.send(
-        content=f"{m.author.mention} , vous venez de passer au niveau {new} !",
-        file=discord.File(card_file, filename="level.png")
-      )
+      
+            card_file = await make_level_card(m.author.display_avatar.url, new)
+      if card_file:
+        await lvl_channel.send(content=f"{m.author.mention}, vous venez de passer au niveau {new}!", file=discord.File(card_file, filename="level.png"))
+      else:
+        await lvl_channel.send(f"{m.author.mention}, vous venez de passer au niveau {new}!")
     except Exception as e:
       print(f"Erreur level up: {e}")
-      e1=discord.Embed(description=f"{m.author.mention} niveau {new} !", color=0x2b2d31)
-      await m.channel.send(embed=e1)
   await bot.process_commands(m)
 @bot.event
 async def on_member_join(mm):
