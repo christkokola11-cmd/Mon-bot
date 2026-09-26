@@ -161,7 +161,18 @@ class GV(discord.ui.View):
 @bot.command()
 async def rank(ctx):
  d=gx(ctx.author.id)
- await ctx.send(f"Lvl {d['lv']} XP {d['xp']}")
+ lvl=d['lv']
+ xp=d['xp']
+ need=int((lvl+1)**2*100)
+ have=int(lvl**2*100)
+ cur=xp-have
+ maxxp=need-have if need-have>0 else 100
+ pct=int(cur/maxxp*100) if maxxp>0 else 0
+ barre="█"*int(pct/10)+"░"*(10-int(pct/10))
+ e=discord.Embed(title=f"{ctx.author.display_name}", description=f"**Niveau {lvl}**\n`{barre}` {pct}%\n{cur}/{maxxp} XP", color=0x2b2d31)
+ e.set_thumbnail(url=ctx.author.display_avatar.url)
+ e.set_footer(text=f"XP Total: {xp}")
+ await ctx.send(embed=e)
 @bot.command()
 async def givexp(ctx,m:discord.Member,a:int):
  ax(m.id,a)
