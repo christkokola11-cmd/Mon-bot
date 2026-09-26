@@ -123,7 +123,18 @@ async def giveaway(ctx, duree: int = 60, *, prix: str = "Prix mystère"):
     users = [u async for u in msg.reactions[0].users() if not u.bot]
     if users: await ch.send(f"🎉 Bravo {random.choice(users).mention} tu gagnes **{prix}**!")
     else: await ch.send("Personne n'a participé...")
-
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def drop(ctx, amount: int, name: str, *, links: str = ""):
+    ch = bot.get_channel(C_GIVEAWAY) or ctx.channel
+    embed = discord.Embed(title=f"{amount} x {name}", description=f"0/{amount} Claimed\nExpires in 60d 23h\n\nOpening a link will instantly redeem the reward!", color=0x2B2D31)
+    if links:
+        txt = "\n".join([f"**{i}** {l}" for i, l in enumerate(links.split(), 1)])
+        embed.add_field(name="CLAIM LINKS", value=txt, inline=False)
+    await ch.send("@everyone")
+    await ch.send(embed=embed)
+    await ctx.send("Drop posté !")
+    
 @bot.event
 async def on_ready():
     global YT_FURIOS_ID, YT_BRAWL_ID, last_yt_furios, last_yt_brawl, last_tiktok
