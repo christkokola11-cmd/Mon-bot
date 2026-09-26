@@ -170,7 +170,8 @@ async def rank(ctx):
  pct=int(cur/maxxp*100) if maxxp>0 else 0
   b1=chr(9608)
   b2=chr(9617)
-  barre=b1*int(pct/10)+b2*(10-int(pct//10))
+    p=int(pct//10)
+  barre=b1*p+b2*(10-p)
  e=discord.Embed(title=f"{ctx.author.display_name}", description=f"**Niveau {lvl}**\n`{barre}` {pct}%\n{cur}/{maxxp} XP", color=0x2b2d31)
  e.set_thumbnail(url=ctx.author.display_avatar.url)
  e.set_footer(text=f"XP Total: {xp}")
