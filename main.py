@@ -5,7 +5,7 @@ import discord, json, random, asyncio
 from discord.ext import commands, tasks
 from io import BytesIO
 import aiohttp
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import datetime
 
 app = Flask('')
@@ -23,7 +23,18 @@ def keep_alive():
 keep_alive()
 
 intents=discord.Intents.all()
-bot=commands.Bot(command_prefix="!",intents=intents)
+XP_FILE = "xp.json"
+xp_data = {}
+if os.path.exists(XP_FILE):
+    try:
+        with open(XP_FILE, "r") as f:
+            xp_data = json.load(f)
+    except: 
+        xp_data = {}
+
+def save_xp():
+    with open(XP_FILE, "w") as f:
+        json.dump(xp_data, f)
 
 # --- TES SALONS ---
 C_VIDEO=1373712170906423398
@@ -92,26 +103,85 @@ async def on_member_remove(m):
 # --- XP SYSTEM ---
 @bot.event
 async def on_message(m):
- if m.author.bot: return
- if m.content.startswith("!"):
-  await bot.process_commands(m);return
- old=getxp(m.author.id)["lv"]
- new=addxp(m.author.id,random.randint(15,25))
- if new>old and new>=1:
-  ch=bot.get_channel(C_LVL) or m.channel
-  await ch.send(f"{m.author.mention} vient de passer niveau {new}! 🔥")
- await bot.process_commands(m)
-
+    if m.author.bot:
+        return
+    if m.content.startswith("!"):
+        await bot.process_commands(m)
+        return
+    uid = str(m.author.id)
+    old_lvl = xp_data.get(uid, 0) // 100
+    xp_data[uid] = xp_data.get(uid, 0) + random.randint(15, 25)
+    save_xp()
+    new_lvl = xp_data[uid] // 100
+    if new_lvl > old_lvl:
+        ch = bot.get_channel(C_LVL) or m.channel
+        # --- CREATION DE LA GROSSE CARTE ---
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import aiohttp
+            from io import BytesIO
+            W, H = 1000, 400
+            img = Image.new("RGB", (W, H), "#08142e")
+            draw = ImageDraw.Draw(img)
+            # fond étoilé bleu
+            for y in range(H):
+                draw.line([(0,y),(W,y)], fill=(8, 20+int(y*0.15), 70+int(y*0.1)))
+            # avatar
+            async with aiohttp.ClientSession() as ses:
+                async with ses.get(str(m.author.display_avatar.url)) as r:
+                    data = await r.read()
+            av = Image.open(BytesIO(data)).convert("RGBA").resize((300,300))
+            mask = Image.new("L", (300,300), 0)
+            ImageDraw.Draw(mask).ellipse((0,0,300,300), fill=255)
+            # bordure blanche
+            border = Image.new("RGBA", (320,320), "white")
+            bm = Image.new("L", (320,320), 0)
+            ImageDraw.Draw(bm).ellipse((0,0,320,320), fill=255)
+            border.putalpha(bm)
+            img.paste(border, (50,40), border)
+            img.paste(av, (60,50), mask)
+            # texte
+            try:
+                f1 = ImageFont.truetype("arial.ttf", 75)
+                f2 = ImageFont.truetype("arial.ttf", 32)
+            except:
+                f1 = ImageFont.load_default()
+                f2 = ImageFont.load_default()
+            draw.text((410, 80), "Félicitations!", fill="white", font=f1)
+            draw.text((410, 190), f"vous avez atteint le niveau {new_lvl}", fill="white", font=f2)
+            draw.text((410, 300), "Furios bot", fill="#6ea8fe", font=f2)
+            img.save("level.png")
+            await ch.send(content=f"{m.author.mention}, vous venez de passer au niveau {new_lvl}!", file=discord.File("level.png"))
+        except Exception as e:
+            # si ça bug, envoie l'ancien message
+            await ch.send(f"{m.author.mention} vient de passer niveau {new_lvl}! 🎉")
+    await bot.process_commands(m)
 @bot.command()
 async def rank(ctx):
- u=getxp(ctx.author.id)
- await ctx.send(f"{ctx.author.mention} Niv {u['lv']} | {u['xp']} XP")
+    uid = str(ctx.author.id)
+    xp = xp_data.get(uid, 0)
+    lvl = xp // 100
+    xp_in_lvl = xp % 100
+    barre = "█" * (xp_in_lvl // 10) + "░" * (10 - xp_in_lvl // 10)
+
+    embed = discord.Embed(
+        title=f"{ctx.author.display_name} 👾",
+        description=f"**Niveau {lvl}**\n{barre} {xp_in_lvl}%\n**{xp_in_lvl}/100 XP**\n\nXP Total: {xp}",
+        color=0x5865F2
+    )
+    embed.set_thumbnail(url=ctx.author.display_avatar.url)
+    await ctx.send(embed=embed)
 
 @bot.command()
-@commands.has_permissions(manage_messages=True)
-async def givexp(ctx,member:discord.Member,x:int):
- addxp(member.id,x)
- await ctx.send(f"{x} XP ajoute a {member.mention}")
+async def test(ctx):
+    await ctx.send("ça marche frr ✅")
+
+@bot.command()
+async def givexp(ctx, member: discord.Member, x: int):
+    uid = str(member.id)
+    xp_data[uid] = xp_data.get(uid, 0) + x
+    save_xp()
+    await ctx.send(f"{x} XP ajouté à {member.mention}")
 
 # --- TICKET SETUP ---
 @bot.command()
