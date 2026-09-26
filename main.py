@@ -37,7 +37,7 @@ async def on_ready():
 @bot.event
 async def on_message(m):
   if m.author.bot:
-  return
+    return
   old=gx(m.author.id)["lv"]
   if random.random()<0.8:
     new=ax(m.author.id,15)
