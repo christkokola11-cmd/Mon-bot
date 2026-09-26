@@ -38,18 +38,27 @@ async def on_ready():
 async def on_message(m):
  if m.author.bot:
   return
- old=gx(m.author.id)["lv"]
- if random.random()<0.8:
-  new=ax(m.author.id,15)
-  if new>old and new>=1:
-   c=bot.get_channel(L)
-   if c:
-    e1=discord.Embed(description=f"{m.author.mention}, vous venez de passer au niveau {new}!", color=0x2b2d31)
-    e2=discord.Embed(title="Félicitations !", description=f"vous avez atteint\n**le niveau {new}**", color=0x111111)
-    e2.set_thumbnail(url=m.author.display_avatar.url)
-    await c.send(embed=e1)
-    await c.send(embed=e2)
- await bot.process_commands(m)
+   old=gx(m.author.id)["lv"]
+  if random.random()<0.8:
+    new=ax(m.author.id,15)
+    if new>old and new>=1:
+      c=bot.get_channel(L)
+      if c:
+        all_users=sorted(data.items(), key=lambda x: x[1]['xp'], reverse=True)
+        rank_pos=1
+        for i,(uid,udata) in enumerate(all_users):
+          if str(uid)==str(m.author.id):
+            rank_pos=i+1
+            break
+        need_next=int((new+1)**2*100)
+        reste=need_next-gx(m.author.id)['xp']
+        e1=discord.Embed(description=f"🎉 Bravo {m.author.mention} tu viens d'atteindre le niveau {new} 😻\n👻 Tu es actuellement Top {rank_pos} du classement 🧙!\n» Prochain niveau dans {reste} Exp 🐹!", color=0x1E90FF)
+        e1.set_thumbnail(url=m.author.display_avatar.url)
+        e2=discord.Embed(title="Félicitations!", description=f"vous avez atteint\nle niveau {new}", color=0x1E90FF)
+        e2.set_thumbnail(url=m.author.display_avatar.url)
+        await c.send(embed=e1)
+        await c.send(embed=e2)
+  await bot.process_commands(m)
 @bot.event
 async def on_member_join(mm):
  ch=bot.get_channel(B)
