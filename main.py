@@ -39,11 +39,10 @@ async def on_ready():
 async def on_message(m):
   if m.author.bot:
     return
-    old=gx(m.author.id)["lv"]
-  new=ax(m.author.id, random.randint(15,25)) # 100% d'XP
+  old=gx(m.author.id)["lv"]
+  new=ax(m.author.id, random.randint(15,25))
   if new>old and new>=1:
     try:
-      # --- CARTE FURIOS ---
       W,H=900,300
       bg=Image.new("RGB",(W,H),(13,25,62))
       draw=ImageDraw.Draw(bg,"RGBA")
@@ -61,7 +60,7 @@ async def on_message(m):
       ImageDraw.Draw(b_mask).ellipse((0,0,210,210), fill=255)
       bg.paste(border,(50,45),b_mask)
       bg.paste(av,(55,50),mask)
-            try:
+      try:
         f1=ImageFont.truetype("arial.ttf",55)
         f2=ImageFont.truetype("arial.ttf",26)
       except:
