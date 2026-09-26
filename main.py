@@ -1,9 +1,26 @@
-import discord, json, os, random, asyncio
+import os
+from flask import Flask
+from threading import Thread
+import discord, json, random, asyncio
 from discord.ext import commands, tasks
 from io import BytesIO
 import aiohttp
 from PIL import Image, ImageDraw
 import datetime
+
+app = Flask('')
+@app.route('/')
+def home():
+    return "Bot Furios ON"
+
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+keep_alive()
 
 intents=discord.Intents.all()
 bot=commands.Bot(command_prefix="!",intents=intents)
