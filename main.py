@@ -81,38 +81,18 @@ async def on_message(m):
     return
   old=gx(m.author.id)["lv"]
   new=ax(m.author.id, random.randint(15,25))
-  if new>old and new>=1:
+    if new>old and new>=1:
     try:
-      W,H=900,300
-      bg=Image.new("RGB",(W,H),(13,25,62))
-      draw=ImageDraw.Draw(bg,"RGBA")
-      for i in range(H):
-        draw.line([(0,i),(W,i)], fill=(int(13+i*0.1), int(25+i*0.15), int(100+i*0.2)))
-      draw.rounded_rectangle([(5,5),(W-5,H-5)], radius=25, outline=(60,110,255,120), width=2)
-      async with aiohttp.ClientSession() as s:
-        async with s.get(str(m.author.display_avatar.url)) as r:
-          av_data=await r.read()
-      av=Image.open(io.BytesIO(av_data)).convert("RGBA").resize((200,200))
-      mask=Image.new("L",(200,200),0)
-      ImageDraw.Draw(mask).ellipse((0,0,200,200), fill=255)
-      border=Image.new("RGBA",(210,210),(255,255,255,255))
-      b_mask=Image.new("L",(210,210),0)
-      ImageDraw.Draw(b_mask).ellipse((0,0,210,210), fill=255)
-      bg.paste(border,(50,45),b_mask)
-      bg.paste(av,(55,50),mask)
-      try:
-        f1=ImageFont.truetype("arial.ttf",55)
-        f2=ImageFont.truetype("arial.ttf",26)
-      except:
-        f1=ImageFont.load_default()
-        f2=ImageFont.load_default()
-      draw.text((310,70),"Félicitations !",fill="white",font=f1)
-      draw.text((310,150),f"vous avez atteint le niveau {new}",fill="white",font=f2)
-      draw.text((310,200),"🤖 Furios Bot",fill=(100,140,255),font=f2)
-      out=io.BytesIO()
-      bg.save(out,format="PNG")
-      out.seek(0)
-      await m.channel.send(file=discord.File(out, filename="level.png"))
+      lvl_channel = bot.get_channel(LEVEL_CHANNEL_ID)
+      if lvl_channel is None:
+        lvl_channel = m.channel
+      card_file = await make_level_card(m.author.display_avatar.url, new)
+      await lvl_channel.send(
+        content=f"{m.author.mention} , vous venez de passer au niveau {new} !",
+        file=discord.File(card_file, filename="level.png")
+      )
+    except Exception as e:
+      print(f"Erreur level up: {e}")
     except Exception as e:
       print(e)
       e1=discord.Embed(description=f"{m.author.mention} niveau {new} !", color=0x2b2d31)
