@@ -38,11 +38,17 @@ async def on_ready():
 async def on_message(m):
  if m.author.bot:
   return
+ old=gx(m.author.id)["lv"]
  if random.random()<0.8:
-  l=ax(m.author.id,5)
-  c=bot.get_channel(L)
-  if c and l%2==0:
-   await c.send(f"🎉 {m.author.mention} lvl {l}")
+  new=ax(m.author.id,15)
+  if new>old and new>=1:
+   c=bot.get_channel(L)
+   if c:
+    e1=discord.Embed(description=f"{m.author.mention}, vous venez de passer au niveau {new}!", color=0x2b2d31)
+    e2=discord.Embed(title="Félicitations !", description=f"vous avez atteint\n**le niveau {new}**", color=0x111111)
+    e2.set_thumbnail(url=m.author.display_avatar.url)
+    await c.send(embed=e1)
+    await c.send(embed=e2)
  await bot.process_commands(m)
 @bot.event
 async def on_member_join(mm):
