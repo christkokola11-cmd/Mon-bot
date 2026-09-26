@@ -93,7 +93,6 @@ async def on_message(m):
           break
       if lvl_channel is None:
         lvl_channel = m.channel
-      
             card_file = await make_level_card(m.author.display_avatar.url, new)
       if card_file:
         await lvl_channel.send(content=f"{m.author.mention}, vous venez de passer au niveau {new}!", file=discord.File(card_file, filename="level.png"))
