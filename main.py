@@ -1,4 +1,5 @@
-import discord,os,asyncio,aiohttp,random,re
+import discord,os,asyncio,aiohttp,random,io
+from PIL import Image, ImageDraw, ImageFont
 from discord.ext import commands,tasks
 from flask import Flask
 from threading import Thread
@@ -38,26 +39,45 @@ async def on_ready():
 async def on_message(m):
   if m.author.bot:
     return
-  old=gx(m.author.id)["lv"]
-  if random.random()<0.8:
-    new=ax(m.author.id,15)
-    if new>old and new>=1:
-      c=bot.get_channel(L)
-      if c:
-        all_users=sorted(data.items(), key=lambda x: x[1]['xp'], reverse=True)
-        rank_pos=1
-        for i,(uid,udata) in enumerate(all_users):
-          if str(uid)==str(m.author.id):
-            rank_pos=i+1
-            break
-        need_next=int((new+1)**2*100)
-        reste=need_next-gx(m.author.id)["xp"]
-        e1=discord.Embed(description=f"🎉 Bravo {m.author.mention} tu viens d'atteindre le niveau {new} 😻\n👻 Tu es actuellement Top {rank_pos} du classement 🧙!\n» Prochain niveau dans {reste} Exp 🐹!", color=0x1E90FF)
-        e1.set_thumbnail(url=m.author.display_avatar.url)
-        e2=discord.Embed(title="Félicitations!", description=f"vous avez atteint\nle niveau {new}", color=0x1E90FF)
-        e2.set_thumbnail(url=m.author.display_avatar.url)
-        await c.send(embed=e1)
-        await c.send(embed=e2)
+    old=gx(m.author.id)["lv"]
+  new=ax(m.author.id, random.randint(15,25)) # 100% d'XP
+  if new>old and new>=1:
+    try:
+      # --- CARTE FURIOS ---
+      W,H=900,300
+      bg=Image.new("RGB",(W,H),(13,25,62))
+      draw=ImageDraw.Draw(bg,"RGBA")
+      for i in range(H):
+        draw.line([(0,i),(W,i)], fill=(int(13+i*0.1), int(25+i*0.15), int(100+i*0.2)))
+      draw.rounded_rectangle([(5,5),(W-5,H-5)], radius=25, outline=(60,110,255,120), width=2)
+      async with aiohttp.ClientSession() as s:
+        async with s.get(str(m.author.display_avatar.url)) as r:
+          av_data=await r.read()
+      av=Image.open(io.BytesIO(av_data)).convert("RGBA").resize((200,200))
+      mask=Image.new("L",(200,200),0)
+      ImageDraw.Draw(mask).ellipse((0,0,200,200), fill=255)
+      border=Image.new("RGBA",(210,210),(255,255,255,255))
+      b_mask=Image.new("L",(210,210),0)
+      ImageDraw.Draw(b_mask).ellipse((0,0,210,210), fill=255)
+      bg.paste(border,(50,45),b_mask)
+      bg.paste(av,(55,50),mask)
+            try:
+        f1=ImageFont.truetype("arial.ttf",55)
+        f2=ImageFont.truetype("arial.ttf",26)
+      except:
+        f1=ImageFont.load_default()
+        f2=ImageFont.load_default()
+      draw.text((310,70),"Félicitations !",fill="white",font=f1)
+      draw.text((310,150),f"vous avez atteint le niveau {new}",fill="white",font=f2)
+      draw.text((310,200),"🤖 Furios Bot",fill=(100,140,255),font=f2)
+      out=io.BytesIO()
+      bg.save(out,format="PNG")
+      out.seek(0)
+      await m.channel.send(file=discord.File(out, filename="level.png"))
+    except Exception as e:
+      print(e)
+      e1=discord.Embed(description=f"{m.author.mention} niveau {new} !", color=0x2b2d31)
+      await m.channel.send(embed=e1)
   await bot.process_commands(m)
 @bot.event
 async def on_member_join(mm):
