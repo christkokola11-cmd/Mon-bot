@@ -1,6 +1,26 @@
 from flask import Flask
 from threading import Thread
 import os
+import json
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+import aiohttp
+import asyncio
+import random
+import re
+from datetime import datetime
+
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot en ligne!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+Thread(target=run_flask, daemon=True).start()
 
 app = Flask(__name__)
 @app.route('/')
@@ -216,6 +236,64 @@ async def check_tiktok():
                 t = await r.text()
                 # tu pourras remettre ton regex tiktok ici apres
     except: pass
+# --- ALERT MAPS BRAWL STARS - A COLLER ICI ---
+ALERT_MAPS_CHANNEL_ID = 1553100406081720350
+BRAWL_API = "https://api.brawlapi.com/v1/events"
+SAVE_FILE = "last_brawl_maps.json"
 
-import os
+class BrawlAlertMaps(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.last_maps = {}
+        if os.path.exists(SAVE_FILE):
+            with open(SAVE_FILE, "r") as f:
+                import json
+                self.last_maps = json.load(f)
+        self.check_rotation.start()
+
+    @tasks.loop(seconds=60)
+    async def check_rotation(self):
+        channel = self.bot.get_channel(ALERT_MAPS_CHANNEL_ID)
+        if not channel:
+            return
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(BRAWL_API) as r:
+                    data = await r.json()
+            for event in data.get("active", []):
+                mode = event["map"]["gameMode"]["name"]
+                map_id = str(event["id"])
+                map_name = event["map"]["name"]
+                image_url = event["map"]["imageUrl"]
+                key = mode.lower()
+                if self.last_maps.get(key)!= map_id:
+                    if self.last_maps.get(key) is None:
+                        self.last_maps[key] = map_id
+                        continue
+                    self.last_maps[key] = map_id
+                    heure = datetime.now().strftime("%H:%M")
+                    embed = discord.Embed(
+                        title=f"The {mode} maps have changed. Here are the new maps!!! - {heure}",
+                        description=f"**New map:** {map_name}",
+                        color=discord.Color.gold()
+                    )
+                    embed.set_image(url=image_url)
+                    view = discord.ui.View()
+                    view.add_item(discord.ui.Button(label="JOIN GAME : click Here", style=discord.ButtonStyle.link, url="https://link.brawlstars.com/", emoji="✅"))
+                    await channel.send(content=f"The {mode} maps have changed. Here are the new maps!!! - {heure}", embed=embed, view=view)
+            import json
+            with open(SAVE_FILE, "w") as f:
+                json.dump(self.last_maps, f)
+        except Exception as e:
+            print(e)
+
+    @check_rotation.before_loop
+    async def before(self):
+        await self.bot.wait_until_ready()
+
+@bot.event
+async def on_ready():
+    await bot.add_cog(BrawlAlertMaps(bot))
+    print(f"Bot prêt! Alert maps activé pour {ALERT_MAPS_CHANNEL_ID}")
+
 bot.run(os.environ.get("TOKEN"))
