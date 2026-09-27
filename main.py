@@ -128,7 +128,7 @@ async def check_tiktok():
                     ch = bot.get_channel(C_VIDEO)
                     await ch.send(f"ho furios Vien de poster TikTok 🙌 @everyone https://www.tiktok.com/{TIKTOK}/video/{m.group(1)}")
                 if m: last_tik = m.group(1)
-    except: pas
+            except: pass
 
 import os
 bot.run(os.environ.get("TOKEN"))
