@@ -1,7 +1,22 @@
+from flask import Flask
+from threading import Thread
+import os
+
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot en ligne !"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+Thread(target=run_flask, daemon=True).start()
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import aiohttp, os, re
+import aiohttp, re
 
 C_VIDEO = 1373712170906423398
 C_BIENVENUE = 1373558403712028773
