@@ -119,9 +119,17 @@ class BrawlAlertMaps(commands.Cog):
         self.bot = bot
         self.last_maps = {}
         if os.path.exists(SAVE_FILE):
-            with open(SAVE_FILE, "r") as f:
-                self.last_maps = json.load(f)
-        self.check_rotation.start()
+            try:
+                with open(SAVE_FILE, "r") as f:
+                    self.last_maps = json.load(f)
+            except:
+                self.last_maps = {}
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.check_rotation.is_running():
+            self.check_rotation.start()
+            print("Alert Maps loop started")
 
     @tasks.loop(seconds=60)
     async def check_rotation(self):
@@ -141,7 +149,7 @@ class BrawlAlertMaps(commands.Cog):
                             self.last_maps[map_id] = map_name
                             with open(SAVE_FILE, "w") as f:
                                 json.dump(self.last_maps, f)
-                            embed = discord.Embed(title=f"{mode} - {map_name}", description=f"The {mode} maps have changed. Here are the new maps!!!", color=0x00ff00)
+                            embed = discord.Embed(title=f"{mode} - {map_name}", color=0x00ff00)
                             embed.set_image(url=image_url)
                             view = discord.ui.View()
                             view.add_item(discord.ui.Button(label="JOIN GAME ✅", url=f"https://brawlify.com/maps/{map_id}", style=discord.ButtonStyle.link))
@@ -151,6 +159,7 @@ class BrawlAlertMaps(commands.Cog):
 
     def cog_unload(self):
         self.check_rotation.cancel()
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
