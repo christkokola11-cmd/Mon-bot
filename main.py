@@ -16,7 +16,7 @@ Thread(target=run_flask, daemon=True).start()
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import aiohttp, re
+import aiohttp, re, asyncio, random, datetime
 
 C_VIDEO = 1373712170906423398
 C_BIENVENUE = 1373558403712028773
@@ -36,14 +36,16 @@ last_vid = None
 last_tik = None
 
 class TicketView(discord.ui.View):
-    def __init__(self): super().__init__(timeout=None)
-    @discord.ui.button(label="🎫 Ouvrir un ticket", style=discord.ButtonStyle.blurple, custom_id="t1")
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🎫 Ouvrir un ticket", style=discord.ButtonStyle.blurple, custom_id="open_ticket")
     async def open(self, inter, btn):
         g = inter.guild
-        ow = {g.default_role: discord.PermissionOverwrite(view_channel=False), inter.user: discord.PermissionOverwrite(view_channel=True), g.me: discord.PermissionOverwrite(view_channel=True)}
+        ow = {g.default_role: discord.PermissionOverwrite(view_channel=False), inter.user: discord.PermissionOverwrite(view_channel=True, send_messages=True), g.me: discord.PermissionOverwrite(view_channel=True)}
         c = await g.create_text_channel(f"ticket-{inter.user.name}", overwrites=ow)
-        await c.send(f"{inter.user.mention} Staff arrive!")
-        await inter.response.send_message(f"Créé {c.mention}", ephemeral=True)
+        await c.send(f"{inter.user.mention} Ton ticket est ouvert! Le staff arrive.")
+        await inter.response.send_message(f"Ticket créé: {c.mention} ✅", ephemeral=True)
 
 async def get_rss():
     global YT_RSS
@@ -59,6 +61,34 @@ async def get_rss():
                     return YT_RSS
     except: pass
     return YT_RSS
+
+# --- GIVEAWAY ---
+@bot.tree.command(name="giveaway", description="Lancer un giveaway")
+@app_commands.describe(duree="Durée ex: 1m, 10m, 1h, 1d", gagnants="Nombre de gagnants", prix="Prix à gagner", salon="Salon du giveaway")
+async def giveaway(interaction: discord.Interaction, duree: str, gagnants: int, prix: str, salon: discord.TextChannel = None):
+    await interaction.response.defer()
+    units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    match = re.match(r"(\d+)([smhd])", duree.lower())
+    if not match:
+        await interaction.followup.send("Durée invalide! Ex: 10m, 1h, 1d", ephemeral=True)
+        return
+    seconds = int(match.group(1)) * units[match.group(2)]
+    channel = salon or interaction.channel
+    end_time = discord.utils.utcnow() + datetime.timedelta(seconds=seconds)
+    embed = discord.Embed(title="🎉 GIVEAWAY 🎉", description=f"**Prix:** {prix}\n**Gagnants:** {gagnants}\n**Finit:** <t:{int(end_time.timestamp())}:R>\n\nClique sur 🎉 pour participer!", color=0xffd700)
+    embed.set_footer(text=f"Lancé par {interaction.user}")
+    msg = await channel.send(embed=embed)
+    await msg.add_reaction("🎉")
+    await interaction.followup.send(f"Giveaway lancé dans {channel.mention}!", ephemeral=True)
+    await asyncio.sleep(seconds)
+    new_msg = await channel.fetch_message(msg.id)
+    users = [u async for u in new_msg.reactions[0].users() if not u.bot]
+    if not users:
+        await channel.send("Personne n'a participé 😢")
+        return
+    winners = random.sample(users, min(gagnants, len(users)))
+    win_mention = ", ".join([w.mention for w in winners])
+    await channel.send(f"🎉 Félicitations {win_mention}! Vous avez gagné **{prix}**!")
 
 @bot.event
 async def on_ready():
