@@ -104,7 +104,7 @@ async def check_youtube():
     global last_vid
     rss = await get_rss()
     if not rss: return
-    try:
+        try:
         async with aiohttp.ClientSession() as s:
             async with s.get(rss) as r:
                 t = await r.text()
@@ -115,10 +115,6 @@ async def check_youtube():
                         await ch.send(f"ho furios Vien de poster une nouvelle vidéo vas faire exploser les compteurs de like 🙌🤩 @everyone https://www.youtube.com/watch?v={vid}")
                     last_vid = vid
     except: pass
-
-@tasks.loop(minutes=15)
-async def check_tiktok():
-    global last_tik
     try:
         async with aiohttp.ClientSession() as s:
             async with s.get(f"https://www.tiktok.com/{TIKTOK}", headers={"User-Agent":"Mozilla/5.0"}) as r:
