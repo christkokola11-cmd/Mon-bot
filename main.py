@@ -282,18 +282,30 @@ async def check_tiktok():
     except: pass
 @bot.event
 async def on_ready():
+    print("ON_READY CALLE - DEBUT")
+    try:
+        bot.add_view(TicketView())
+        print("TicketView OK")
+    except Exception as e:
+        print(f"TicketView ERROR {e}")
     try:
         await bot.tree.sync()
-        bot.add_view(TicketView())
-        try: check_youtube.start()
-        except: pass
-        try: check_tiktok.start()
-        except: pass
-        await bot.add_cog(BrawlAlertMaps(bot))
-        print(f"Furios OK {bot.user} + Alert Maps ON")
+        print("Sync OK")
     except Exception as e:
-        print(f"[on_ready ERROR] {e}")
+        print(f"Sync ERROR {e}")
+    try:
+        check_youtube.start()
+    except: pass
+    try:
+        check_tiktok.start()
+    except: pass
+    try:
+        await bot.add_cog(BrawlAlertMaps(bot))
+        print("Maps Cog OK")
+    except Exception as e:
+        print(f"Maps Cog ERROR {e}")
         import traceback
         traceback.print_exc()
-        
+    print(f"Furios OK {bot.user}")
+
 bot.run(os.environ.get("TOKEN"))
