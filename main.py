@@ -133,10 +133,11 @@ class BrawlAlertMaps(commands.Cog):
         if os.path.exists(SAVE_FILE):
             try: os.remove(SAVE_FILE)
             except: pass
-    @commands.Cog.listener()
+        @commands.Cog.listener()
     async def on_ready(self):
         if not self.check_rotation.is_running():
             self.check_rotation.start()
+        await self.check_rotation() # <-- lance direct au démarrage
     @tasks.loop(seconds=60)
     async def check_rotation(self):
         print("[Maps] check_rotation lancé...")
