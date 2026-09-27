@@ -140,38 +140,41 @@ class BrawlAlertMaps(commands.Cog):
         if not self.check_rotation.is_running():
             self.check_rotation.start()
 
-    @tasks.loop(seconds=60)
+        @tasks.loop(seconds=60)
     async def check_rotation(self):
+        print("[Maps] check_rotation lancé...")
         channel = self.bot.get_channel(1553100406081720350)
         if not channel:
-            print("[Maps] Channel non trouvé!")
+            print("[Maps] Channel non trouvé! ID=1553100406081720350")
             return
+        print(f"[Maps] Channel trouvé: {channel.name}")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(BRAWL_API) as r:
+                    print(f"[Maps DEBUG] Status Brawlify: {r.status}")
                     data = await r.json()
                     active = data.get("active", [])
                     print(f"[Maps DEBUG] {len(active)} maps trouvées")
                     for ev in active:
-                        mode = ev.get("mode",{}).get("name","Mode")
-                        m = ev.get("map",{})
-                        map_name = m.get("name","Unknown")
-                        map_id = str(m.get("id", map_name))
-                        img = m.get("imageUrl")
-                        # FORCE ENVOI si fichier n'existe pas
-                        if True: # on force
-                            print(f"[Maps] Envoi {mode} - {map_name}")
-                            embed = discord.Embed(title=f"{mode} - {map_name}", color=0x00ff00)
-                            if img: embed.set_image(url=img)
-                            view = discord.ui.View()
-                            view.add_item(discord.ui.Button(label="JOIN GAME ✅", url=f"https://brawlify.com/maps/{map_id}", style=discord.ButtonStyle.link))
-                            await channel.send(content=f"The {mode} maps have changed! - {datetime.now().strftime('%H:%M')}", embed=embed, view=view)
-                    # Après envoi, on sauvegarde pour pas re-spam
-                    self.last_maps = {str(ev.get("map",{}).get("id")): ev.get("map",{}).get("name") for ev in active}
-                    with open(SAVE_FILE,"w") as f:
-                        json.dump(self.last_maps,f)
+                        mode = ev.get("mode", "Inconnu")
+                        m = ev.get("map", {})
+                        map_name = m.get("name", "Inconnu")
+                        map_id = str(m.get("id", ""))
+                        img = m.get("imageUrl", "")
+                        print(f"[Maps] Envoi {mode} - {map_name}")
+                        embed = discord.Embed(title=f"{mode} - {map_name}", color=0x00ff00)
+                        if img:
+                            embed.set_image(url=img)
+                        view = discord.ui.View()
+                        view.add_item(discord.ui.Button(label="Voir map", url=f"https://brawlify.com/maps/{map_id}"))
+                        await channel.send(embed=embed, view=view)
+                    self.last_maps = {str(ev.get("map", {}).get("id")): ev.get("map", {}).get("name") for ev in active}
+                    with open(SAVE_FILE, "w") as f:
+                        json.dump(self.last_maps, f)
         except Exception as e:
             print(f"[Maps Error] {e}")
+            import traceback
+            traceback.print_exc()
 
 async def setup_maps(bot):
     await bot.add_cog(BrawlAlertMaps(bot))
