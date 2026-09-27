@@ -162,12 +162,19 @@ class BrawlAlertMaps(commands.Cog):
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    bot.add_view(TicketView())
-    check_youtube.start()
-    check_tiktok.start()
-    await bot.add_cog(BrawlAlertMaps(bot))
-    print(f"Furios OK {bot.user} + Alert Maps ON")
+    try:
+        await bot.tree.sync()
+        bot.add_view(TicketView())
+        try: check_youtube.start()
+        except: pass
+        try: check_tiktok.start()
+        except: pass
+        await bot.add_cog(BrawlAlertMaps(bot))
+        print(f"Furios OK {bot.user} + Alert Maps ON")
+    except Exception as e:
+        print(f"[on_ready ERROR] {e}")
+        import traceback
+        traceback.print_exc()
 
 @bot.event
 async def on_member_join(m):
