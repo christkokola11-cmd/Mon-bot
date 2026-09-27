@@ -130,31 +130,28 @@ class BrawlAlertMaps(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.last_maps = {}
-        # On supprime l'ancien fichier pour forcer l'envoi la 1ère fois
         if os.path.exists(SAVE_FILE):
             try: os.remove(SAVE_FILE)
             except: pass
-
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.check_rotation.is_running():
             self.check_rotation.start()
-
-        @tasks.loop(seconds=60)
+    @tasks.loop(seconds=60)
     async def check_rotation(self):
         print("[Maps] check_rotation lancé...")
         channel = self.bot.get_channel(1553100406081720350)
         if not channel:
-            print("[Maps] Channel non trouvé! ID=1553100406081720350")
+            print("[Maps] Channel non trouvé!")
             return
         print(f"[Maps] Channel trouvé: {channel.name}")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(BRAWL_API) as r:
-                    print(f"[Maps DEBUG] Status Brawlify: {r.status}")
+                    print(f"[Maps DEBUG] Status: {r.status}")
                     data = await r.json()
                     active = data.get("active", [])
-                    print(f"[Maps DEBUG] {len(active)} maps trouvées")
+                    print(f"[Maps DEBUG] {len(active)} maps")
                     for ev in active:
                         mode = ev.get("mode", "Inconnu")
                         m = ev.get("map", {})
@@ -175,7 +172,6 @@ class BrawlAlertMaps(commands.Cog):
             print(f"[Maps Error] {e}")
             import traceback
             traceback.print_exc()
-
 async def setup_maps(bot):
     await bot.add_cog(BrawlAlertMaps(bot))
 
