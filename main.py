@@ -122,14 +122,47 @@ async def rank(interaction: discord.Interaction):
     xp = xp_data.get(str(interaction.user.id), 0)
     await interaction.response.send_message(f"Niveau {xp//100} XP {xp}", ephemeral=True)
 
-@bot.tree.command(name="setup_ticket", description="Installer les tickets")
+class TicketSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Giveaway", description="Je souhaite réclamer une récompense", emoji="🎉"),
+            discord.SelectOption(label="Problème", description="J'ai un problème avec un membre", emoji="👹"),
+            discord.SelectOption(label="Partenariat", description="Je souhaite faire un partenariat", emoji="💙"),
+            discord.SelectOption(label="Autre", description="J'ai un autre problème", emoji="🎭"),
+        ]
+        super().__init__(placeholder="Choisissez un type de ticket...", options=options)
+    async def callback(self, interaction: discord.Interaction):
+        g = interaction.guild
+        ow = {g.default_role: discord.PermissionOverwrite(view_channel=False), interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True), g.me: discord.PermissionOverwrite(view_channel=True, send_messages=True)}
+        c = await g.create_text_channel(f"🎫・{self.values[0].lower()}-{interaction.user.name}", overwrites=ow)
+        await c.send(f"{interaction.user.mention} Ticket **{self.values[0]}** ouvert! Explique ta demande, le staff FuriosBS arrive.")
+        await interaction.response.send_message(f"Ticket créé: {c.mention} ✅", ephemeral=True)
+
+class TicketSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(TicketSelect())
+
+class TicketView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(label="Ouvrir un ticket", emoji="🎫", style=discord.ButtonStyle.blurple, custom_id="open_ticket_furios")
+    async def open(self, inter: discord.Interaction, btn: discord.ui.Button):
+        e = discord.Embed(title="Type de ticket", description="Sélectionnez le type correspondant à votre demande.", color=0x2b2d31)
+        await inter.response.send_message(embed=e, view=TicketSelectView(), ephemeral=True)
+    @discord.ui.button(label="Informations", emoji="📖", style=discord.ButtonStyle.gray, custom_id="info_ticket_furios")
+    async def info(self, inter: discord.Interaction, btn: discord.ui.Button):
+        await inter.response.send_message("Un seul ticket à la fois. Choisissez la bonne catégorie et restez respectueux!", ephemeral=True)
+
+@bot.tree.command(name="setup_ticket", description="Installer les tickets style Bot Feller")
 async def setup_ticket(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     ch = bot.get_channel(C_TICKET) if 'C_TICKET' in globals() else interaction.channel
     if ch is None: ch = interaction.channel
-    e = discord.Embed(title="Support FuriosBS", description="Besoin d'aide?\nClique sur le bouton pour ouvrir un ticket.", color=0x5865f2)
-    await ch.send(embed=e, view=TicketView())
-    await interaction.followup.send(f"Installé dans {ch.mention} ✅", ephemeral=True)
+    embed = discord.Embed(title="Support", description="**Besoin d'aide? Ouvre un ticket et l'équipe vous répondra dans un salon privé!**\n\n**Comment ouvrir une demande :**\n1. Cliquez sur \"Ouvrir un ticket\"\n2. Entrez les détails sur la raison de l'ouverture de votre ticket", color=0x2b2d31)
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1374857163104583782/1553592522993836113/IMG-20260922-WA0023.jpg?ex=6ab9cf49&is=6ab87dc9&hm=4161b8304b9dc2dbed09259434df87d9f4eff3628f623fba80c7edcd4d137b52&")
+    await ch.send(embed=embed, view=TicketView())
+    await interaction.followup.send(f"Installé dans {ch.mention} ✅ Avec ton image", ephemeral=True)
 
 @tasks.loop(minutes=5)
 async def check_youtube():
