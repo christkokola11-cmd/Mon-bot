@@ -116,7 +116,9 @@ async def on_ready():
     bot.add_view(TicketView())
     check_youtube.start()
     check_tiktok.start()
-    print(f"Furios OK {bot.user}")
+    # AJOUTE CES 2 LIGNES ICI
+    await bot.add_cog(BrawlAlertMaps(bot))
+    print(f"Furios OK {bot.user} + Alert Maps ON")
 
 @bot.event
 async def on_member_join(m):
@@ -290,10 +292,5 @@ class BrawlAlertMaps(commands.Cog):
     @check_rotation.before_loop
     async def before(self):
         await self.bot.wait_until_ready()
-
-@bot.event
-async def on_ready():
-    await bot.add_cog(BrawlAlertMaps(bot))
-    print(f"Bot prêt! Alert maps activé pour {ALERT_MAPS_CHANNEL_ID}")
 
 bot.run(os.environ.get("TOKEN"))
