@@ -122,12 +122,14 @@ async def rank(interaction: discord.Interaction):
     xp = xp_data.get(str(interaction.user.id), 0)
     await interaction.response.send_message(f"Niveau {xp//100} XP {xp}", ephemeral=True)
 
-@bot.tree.command(name="setup_ticket", description="Poster ticket")
+@bot.tree.command(name="setup_ticket", description="Installer les tickets")
 async def setup_ticket(interaction: discord.Interaction):
-    ch = bot.get_channel(C_TICKET)
-    e = discord.Embed(title="Besoin d'aide? Ouvre un ticket!", description="Click ouvrir un ticket", color=0x0099FF)
+    await interaction.response.defer(ephemeral=True)
+    ch = bot.get_channel(C_TICKET) if 'C_TICKET' in globals() else interaction.channel
+    if ch is None: ch = interaction.channel
+    e = discord.Embed(title="Support FuriosBS", description="Besoin d'aide?\nClique sur le bouton pour ouvrir un ticket.", color=0x5865f2)
     await ch.send(embed=e, view=TicketView())
-    await interaction.response.send_message("OK", ephemeral=True)
+    await interaction.followup.send(f"Installé dans {ch.mention} ✅", ephemeral=True)
 
 @tasks.loop(minutes=5)
 async def check_youtube():
@@ -146,7 +148,7 @@ async def check_youtube():
                     last_vid = vid
     except: pass
 
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=10)
 async def check_tiktok():
     global last_tik
     try:
