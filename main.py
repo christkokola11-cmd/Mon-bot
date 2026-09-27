@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-# --- FLASK (UNE SEULE FOIS) ---
+# --- FLASK (Render) ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -28,15 +28,14 @@ ALERT_MAPS_CHANNEL_ID = C_MAPS
 
 YT_HANDLE = "@FuriosBS"
 YT_RSS = None
+
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 xp_data = {}
 last_vid = None
-last_tik = None
-# Mets ton TOKEN Render: soit DISCORD_TOKEN soit TOKEN
 TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("TOKEN")
 
-# --- TICKET AVEC DETAILS (ton système complet) ---
+# --- TICKETS ---
 class CloseTicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -44,8 +43,10 @@ class CloseTicketView(discord.ui.View):
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(f"Ticket fermé par {interaction.user.mention}. Suppression dans 3 sec...", ephemeral=False)
         await asyncio.sleep(3)
-        try: await interaction.channel.delete(reason=f"Fermé par {interaction.user}")
-        except: pass
+        try:
+            await interaction.channel.delete(reason=f"Fermé par {interaction.user}")
+        except:
+            pass
 
 class TicketModal(discord.ui.Modal):
     def __init__(self, ticket_type: str):
@@ -55,7 +56,11 @@ class TicketModal(discord.ui.Modal):
         self.add_item(self.raison)
     async def on_submit(self, interaction: discord.Interaction):
         g = interaction.guild
-        ow = {g.default_role: discord.PermissionOverwrite(view_channel=False), interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True), g.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)}
+        ow = {
+            g.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True),
+            g.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
+        }
         c = await g.create_text_channel(f"ticket-furios-{interaction.user.name}", overwrites=ow)
         embed = discord.Embed(title=f"Ticket — {self.ticket_type}", description=f"**De {interaction.user.mention}**\n**Type:** {self.ticket_type}\n**Raison:**\n```{self.raison.value}```\n\nLe staff va répondre. Clique sur 🔒 pour fermer.", color=0x2b2d31)
         await c.send(content=f"{interaction.user.mention}", embed=embed, view=CloseTicketView())
@@ -107,7 +112,8 @@ async def giveaway(interaction: discord.Interaction, duree: str, gagnants: int, 
     units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
     match = re.match(r"(\d+)([smhd])", duree.lower())
     if not match:
-        await interaction.followup.send("Durée invalide! Ex: 10m, 1h, 1d", ephemeral=True); return
+        await interaction.followup.send("Durée invalide! Ex: 10m, 1h, 1d", ephemeral=True)
+        return
     seconds = int(match.group(1)) * units[match.group(2)]
     channel = salon or interaction.channel
     end_time = datetime.utcnow() + timedelta(seconds=seconds)
@@ -119,31 +125,36 @@ async def giveaway(interaction: discord.Interaction, duree: str, gagnants: int, 
     new_msg = await channel.fetch_message(msg.id)
     users = [u async for u in new_msg.reactions[0].users() if not u.bot]
     if not users:
-        await channel.send("Personne n'a participé 😢"); return
+        await channel.send("Personne n'a participé 😢")
+        return
     winners = random.sample(users, min(gagnants, len(users)))
     await channel.send(f"🎉 Félicitations {', '.join([w.mention for w in winners])}! Vous avez gagné **{prix}**!")
 
-# --- ALERT MAPS ---
+# --- ALERT MAPS V10 - FIX INDENTATION + ANTI-SPAM ---
 BRAWL_API = "https://api.brawlify.com/v1/events"
 SAVE_FILE = "last_brawl_maps.json"
+
 class BrawlAlertMaps(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.last_maps = {}
         if os.path.exists(SAVE_FILE):
-            try: os.remove(SAVE_FILE)
-            except: pass
+            try:
+                with open(SAVE_FILE, "r") as f:
+                    self.last_maps = json.load(f)
+            except:
+                self.last_maps = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
+        print("[Maps] Cog prêt")
         if not self.check_rotation.is_running():
             self.check_rotation.start()
-        await self.check_rotation()
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(minutes=2)
     async def check_rotation(self):
         print("[Maps] check_rotation lancé...")
-        channel = self.bot.get_channel(1553100406081720350)
+        channel = self.bot.get_channel(ALERT_MAPS_CHANNEL_ID)
         if not channel:
             print("[Maps] Channel non trouvé!")
             return
@@ -152,50 +163,60 @@ class BrawlAlertMaps(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(BRAWL_API) as r:
                     print(f"[Maps DEBUG] Status: {r.status}")
+                    if r.status!= 200:
+                        return
                     data = await r.json()
                     active = data.get("active", [])
-                    print(f"[Maps DEBUG] {len(active)} maps")
+                    print(f"[Maps DEBUG] {len(active)} maps actives")
+                    current_ids = {}
                     for ev in active:
-                        mode = ev.get("mode", "Inconnu")
                         m = ev.get("map", {})
-                        map_name = m.get("name", "Inconnu")
                         map_id = str(m.get("id", ""))
-                        img = m.get("imageUrl", "")
-                        print(f"[Maps] Envoi {mode} - {map_name}")
-                        embed = discord.Embed(title=f"{mode} - {map_name}", color=0x00ff00)
-                        if img:
-                            embed.set_image(url=img)
-                        view = discord.ui.View()
-                        view.add_item(discord.ui.Button(label="Voir map", url=f"https://brawlify.com/maps/{map_id}"))
-                        await channel.send(embed=embed, view=view)
-                    self.last_maps = {str(ev.get("map", {}).get("id")): ev.get("map", {}).get("name") for ev in active}
+                        map_name = m.get("name", "Inconnu")
+                        current_ids[map_id] = map_name
+                        if map_id not in self.last_maps:
+                            mode = ev.get("mode", "Inconnu")
+                            img = m.get("imageUrl", "")
+                            print(f"[Maps] NOUVELLE MAP {mode} - {map_name}")
+                            embed = discord.Embed(title=f"{mode} - {map_name}", description=f"Nouvelle rotation détectée!", color=0x00ff00)
+                            if img:
+                                embed.set_image(url=img)
+                            view = discord.ui.View()
+                            if map_id:
+                                view.add_item(discord.ui.Button(label="Voir map", url=f"https://brawlify.com/maps/{map_id}"))
+                            await channel.send(embed=embed, view=view)
+                    # Sauvegarde
+                    self.last_maps = current_ids
                     with open(SAVE_FILE, "w") as f:
                         json.dump(self.last_maps, f)
         except Exception as e:
             print(f"[Maps Error] {e}")
             import traceback
             traceback.print_exc()
-async def setup_maps(bot):
-    await bot.add_cog(BrawlAlertMaps(bot))
 
-# --- YOUTUBE / TIKTOK ---
+# --- YOUTUBE ---
 async def get_rss():
     global YT_RSS
-    if YT_RSS: return YT_RSS
+    if YT_RSS:
+        return YT_RSS
     try:
         async with aiohttp.ClientSession() as s:
             async with s.get(f"https://www.youtube.com/{YT_HANDLE}", headers={"User-Agent":"Mozilla/5.0"}) as r:
                 t = await r.text()
                 m = re.search(r'"channelId":"(UC[^"]+)"', t)
-                if m: YT_RSS = f"https://www.youtube.com/feeds/videos.xml?channel_id={m.group(1)}"; return YT_RSS
-    except: pass
+                if m:
+                    YT_RSS = f"https://www.youtube.com/feeds/videos.xml?channel_id={m.group(1)}"
+                    return YT_RSS
+    except:
+        pass
     return YT_RSS
 
 @tasks.loop(minutes=5)
 async def check_youtube():
     global last_vid
     rss = await get_rss()
-    if not rss: return
+    if not rss:
+        return
     try:
         async with aiohttp.ClientSession() as s:
             async with s.get(rss) as r:
@@ -204,13 +225,11 @@ async def check_youtube():
                     vid = t.split("<yt:videoId>")[1].split("</yt:videoId>")[0]
                     if last_vid and vid!= last_vid:
                         ch = bot.get_channel(C_VIDEO)
-                        if ch: await ch.send(f"@everyone Nouvelle vidéo! https://www.youtube.com/watch?v={vid}")
+                        if ch:
+                            await ch.send(f"@everyone Nouvelle vidéo! https://www.youtube.com/watch?v={vid}")
                     last_vid = vid
-    except: pass
-
-@tasks.loop(minutes=10)
-async def check_tiktok():
-    pass
+    except:
+        pass
 
 @bot.event
 async def on_member_join(m):
@@ -227,7 +246,8 @@ async def on_member_remove(m):
 
 @bot.event
 async def on_message(msg):
-    if msg.author.bot: return
+    if msg.author.bot:
+        return
     xp_data[str(msg.author.id)] = xp_data.get(str(msg.author.id), 0) + 20
     await bot.process_commands(msg)
 
@@ -244,22 +264,27 @@ async def on_ready():
         bot.add_view(TicketView())
         bot.add_view(CloseTicketView())
         print("TicketView OK")
-    except Exception as e: print(f"TicketView ERROR {e}")
+    except Exception as e:
+        print(f"TicketView ERROR {e}")
     try:
         synced = await bot.tree.sync()
         print(f"Sync OK - {len(synced)} commandes")
-    except Exception as e: print(f"Sync ERROR {e}")
-    try:
-        if not check_youtube.is_running(): check_youtube.start()
-        if not check_tiktok.is_running(): check_tiktok.start()
-        print("Youtube/Tiktok OK")
-    except: pass
-    try:
-        await bot.add_cog(BrawlAlertMaps(bot))
-        print("Maps Cog OK")
     except Exception as e:
-        print(f"Maps Cog ERROR {e}")
-        import traceback; traceback.print_exc()
+        print(f"Sync ERROR {e}")
+    try:
+        if not check_youtube.is_running():
+            check_youtube.start()
+        print("Youtube OK")
+    except Exception as e:
+        print(f"Youtube ERROR {e}")
+    # Ajout Cog Maps une seule fois
+    if not bot.get_cog("BrawlAlertMaps"):
+        try:
+            await bot.add_cog(BrawlAlertMaps(bot))
+            print("Maps Cog OK")
+        except Exception as e:
+            print(f"Maps Cog ERROR {e}")
+            import traceback; traceback.print_exc()
     print(f"Furios OK {bot.user}")
 
 bot.run(TOKEN)
