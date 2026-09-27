@@ -160,21 +160,7 @@ class BrawlAlertMaps(commands.Cog):
     def cog_unload(self):
         self.check_rotation.cancel()
 
-@bot.event
-async def on_ready():
-    try:
-        await bot.tree.sync()
-        bot.add_view(TicketView())
-        try: check_youtube.start()
-        except: pass
-        try: check_tiktok.start()
-        except: pass
-        await bot.add_cog(BrawlAlertMaps(bot))
-        print(f"Furios OK {bot.user} + Alert Maps ON")
-    except Exception as e:
-        print(f"[on_ready ERROR] {e}")
-        import traceback
-        traceback.print_exc()
+
 
 @bot.event
 async def on_member_join(m):
@@ -258,7 +244,7 @@ class TicketView(discord.ui.View):
     @discord.ui.button(label="Informations", emoji="📖", style=discord.ButtonStyle.gray, custom_id="info_ticket_v4")
     async def info(self, inter, btn):
         await inter.response.send_message("Un seul ticket à la fois. Choisissez la bonne catégorie!", ephemeral=True)
-
+                       
 @bot.tree.command(name="setup_ticket", description="Installer les tickets style Bot Feller")
 async def setup_ticket(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -294,5 +280,20 @@ async def check_tiktok():
                 t = await r.text()
                 # tu pourras remettre ton regex tiktok ici apres
     except: pass
-
+@bot.event
+async def on_ready():
+    try:
+        await bot.tree.sync()
+        bot.add_view(TicketView())
+        try: check_youtube.start()
+        except: pass
+        try: check_tiktok.start()
+        except: pass
+        await bot.add_cog(BrawlAlertMaps(bot))
+        print(f"Furios OK {bot.user} + Alert Maps ON")
+    except Exception as e:
+        print(f"[on_ready ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+        
 bot.run(os.environ.get("TOKEN"))
